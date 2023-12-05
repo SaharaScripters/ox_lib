@@ -47,10 +47,5 @@
     "postcss": "^8.4.31",
     "prop-types": "^15.8.1",
     "rimraf": "^3.0.2"
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "react-hot-toast@2.4.0": "patches/react-hot-toast@2.4.0.patch"
-    }
   }
 }
