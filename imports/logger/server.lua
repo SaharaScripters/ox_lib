@@ -54,12 +54,13 @@ AddEventHandler('playerDropped', function()
 end)
 
 local function formatTags(source, tags)
-    if type(source) == 'number' and source > 0 then
-        local data = playerData[source]
+    local src = tonumber(source) or 0
+    if src > 0 then
+        local data = playerData[src]
 
         if not data then
             local _data = {
-                ('username:%s'):format(GetPlayerName(source))
+                ('username:%s'):format(GetPlayerName(src))
             }
 
             local num = 1
@@ -75,7 +76,7 @@ local function formatTags(source, tags)
             end
 
             data = table.concat(_data, ',')
-            playerData[source] = data
+            playerData[src] = data
         end
 
         tags = tags and ('%s,%s'):format(tags, data) or data
@@ -102,7 +103,7 @@ if service == 'fivemanage' then
 
                 SetTimeout(500, function()
                     PerformHttpRequest(endpoint, function(status, _, _, response)
-                        if status ~= 200 then 
+                        if status ~= 200 then
                             if type(response) == 'string' then
                                 response = json.decode(response) or response
                                 badResponse(endpoint, status, response)
