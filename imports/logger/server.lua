@@ -80,6 +80,9 @@ local function formatTags(source, tags)
         end
 
         tags = tags and ('%s,%s'):format(tags, data) or data
+    else
+        local data = ('source:%s'):format(source)
+        tags = tags and ('%s,%s'):format(tags, data) or data
     end
 
     return tags
