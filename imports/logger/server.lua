@@ -55,6 +55,12 @@ end)
 
 local function formatTags(source, tags)
     local src = tonumber(source) or 0
+    if src == 0 then
+        local player = exports.qbx_core:GetPlayerByCitizenId(source)
+        if player then
+            src = tonumber(player.source or player.PlayerData.source) or 0
+        end
+    end
     if src > 0 then
         local data = playerData[src]
 
