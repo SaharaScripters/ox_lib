@@ -71,9 +71,9 @@ local function formatTags(source, tags)
 
             local num = 1
 
-            ---@cast source string
-            for i = 0, GetNumPlayerIdentifiers(source) - 1 do
-                local identifier = GetPlayerIdentifier(source, i)
+            local strSrc = tostring(src)
+            for i = 0, GetNumPlayerIdentifiers(strSrc) - 1 do
+                local identifier = GetPlayerIdentifier(strSrc, i)
 
                 if not identifier:find('ip') then
                     num += 1
