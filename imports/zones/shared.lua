@@ -105,21 +105,21 @@ local function getTriangles(polygon)
     return triangles
 end
 
----@type table<number, CZone>
-local insideZones = {}
-
----@type CZone[] | Array
-local exitingZones = lib.array:new()
-
----@type CZone[] | Array
-local enteringZones = lib.array:new()
-
-local tick
+local insideZones = lib.context == 'client' and {} --[[@as table<number, CZone>]]
+local exitingZones = lib.context == 'client' and lib.array:new() --[[@as Array<CZone>]]
+local enteringZones = lib.context == 'client' and lib.array:new() --[[@as Array<CZone>]]
+local nearbyZones = lib.array:new() --[[@as Array<CZone>]]
 local glm_polygon_contains = glm.polygon.contains
 local tick
 
+---@param zone CZone
 local function removeZone(zone)
     Zones[zone.id] = nil
+
+    lib.grid.removeEntry(zone)
+
+    if lib.context == 'server' then return end
+
     insideZones[zone.id] = nil
 
     table.remove(exitingZones, exitingZones:indexOf(zone))
