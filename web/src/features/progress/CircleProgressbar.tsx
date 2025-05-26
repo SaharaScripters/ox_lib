@@ -5,13 +5,7 @@ import {fetchNui} from '../../utils/fetchNui';
 import ScaleFade from '../../transitions/ScaleFade';
 import type {CircleProgressbarProps} from '../../typings';
 
-// 33.5 is the r of the circle
-const progressCircle = keyframes({
-  '0%': { strokeDasharray: `0, ${33.5 * 2 * Math.PI}` },
-  '100%': { strokeDasharray: `${33.5 * 2 * Math.PI}, 0` },
-});
-
-const useStyles = createStyles((theme, params: { position: 'middle' | 'bottom'; duration: number }) => ({
+const useStyles = createStyles((theme, params: { position: 'middle' | 'bottom' }) => ({
   container: {
     width: '100%',
     height: params.position === 'middle' ? '100%' : '20%',
@@ -24,12 +18,6 @@ const useStyles = createStyles((theme, params: { position: 'middle' | 'bottom'; 
   progress: {
     '> svg > circle:nth-child(1)': {
       stroke: theme.colors.dark[5],
-    },
-    // Scuffed way of grabbing the first section and animating it
-    '> svg > circle:nth-child(2)': {
-      transition: 'none',
-      animation: `${progressCircle} linear forwards`,
-      animationDuration: `${params.duration}ms`,
     },
   },
   value: {
@@ -51,34 +39,82 @@ const useStyles = createStyles((theme, params: { position: 'middle' | 'bottom'; 
 
 const CircleProgressbar: React.FC = () => {
   const [visible, setVisible] = React.useState(false);
-  const [progressDuration, setProgressDuration] = React.useState(0);
   const [position, setPosition] = React.useState<'middle' | 'bottom'>('middle');
   const [value, setValue] = React.useState(0);
   const [label, setLabel] = React.useState('');
   const theme = useMantineTheme();
-  const { classes } = useStyles({ position, duration: progressDuration });
+  const { classes } = useStyles({ position });
+
+  // Refs to store interval and start time for cleanup and accurate timing
+  const progressIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = React.useRef<number>(0);
+  const durationRef = React.useRef<number>(0);
+  const animationFrameRef = React.useRef<number>(0);
+
+  // Cleanup function
+  const cleanupProgress = React.useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = 0;
+    }
+  }, []);
+
+  // More accurate progress update using requestAnimationFrame
+  const updateProgress = React.useCallback(() => {
+    const now = Date.now();
+    const elapsed = now - startTimeRef.current;
+    const progress = Math.min((elapsed / durationRef.current) * 100, 100);
+
+    setValue(Math.floor(progress));
+
+    if (progress < 100) {
+      animationFrameRef.current = requestAnimationFrame(updateProgress);
+    } else {
+      setValue(100);
+      // Small delay before hiding to ensure 100% is visible
+      setTimeout(() => {
+        setVisible(false);
+      }, 100);
+    }
+  }, []);
+
+  // Start progress animation
+  const startProgress = React.useCallback((data: CircleProgressbarProps) => {
+    cleanupProgress(); // Clean up any existing progress
+
+    setVisible(true);
+    setValue(0);
+    setLabel(data.label || '');
+    setPosition(data.position || 'middle');
+
+    startTimeRef.current = Date.now();
+    durationRef.current = data.duration;
+
+    // Start the animation
+    animationFrameRef.current = requestAnimationFrame(updateProgress);
+  }, [updateProgress, cleanupProgress]);
 
   useNuiEvent('progressCancel', () => {
-    setValue(99);
+    cleanupProgress();
+    setValue(99); // Set to 99% to indicate cancellation
     setVisible(false);
   });
 
   useNuiEvent<CircleProgressbarProps>('circleProgress', (data) => {
-    if (visible) return;
-    setVisible(true);
-    setValue(0);
-    setLabel(data.label || '');
-    setProgressDuration(data.duration);
-    setPosition(data.position || 'middle');
-    const onePercent = data.duration * 0.01;
-    const updateProgress = setInterval(() => {
-      setValue((previousValue) => {
-        const newValue = previousValue + 1;
-        newValue >= 100 && clearInterval(updateProgress);
-        return newValue;
-      });
-    }, onePercent);
+    // Always start new progress, cleaning up any existing one
+    startProgress(data);
   });
+
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      cleanupProgress();
+    };
+  }, [cleanupProgress]);
 
   return (
     <>
@@ -88,8 +124,7 @@ const CircleProgressbar: React.FC = () => {
             <RingProgress
               size={90}
               thickness={7}
-              sections={[{ value: 0, color: theme.primaryColor }]}
-              onAnimationEnd={() => setVisible(false)}
+              sections={[{ value: value, color: theme.primaryColor }]}
               className={classes.progress}
               label={<Text className={classes.value}>{value}%</Text>}
             />
