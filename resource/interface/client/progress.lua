@@ -7,6 +7,7 @@
 ]]
 
 local progress
+local completed = false
 local DisableControlAction = DisableControlAction
 local DisablePlayerFiring = DisablePlayerFiring
 local playerState = LocalPlayer.state
@@ -179,14 +180,18 @@ local function startProgress(data)
     end
 
     playerState.invBusy = false
-    local duration = progress ~= false and GetGameTimer() - startTime + 100 -- give slight leeway
 
-    if progress == false or duration <= data.duration then
+    -- Check if progress was manually cancelled
+    if progress == false then
         SendNUIMessage({ action = 'progressCancel' })
+        completed = false  -- Reset for next use
         return false
     end
 
-    return true
+    -- Return the completion status
+    local result = completed
+    completed = false  -- Reset for next use
+    return result
 end
 
 ---@param data ProgressProps
@@ -241,6 +246,7 @@ end
 
 RegisterNUICallback('progressComplete', function(data, cb)
     cb(1)
+    completed = true
     progress = nil
 end)
 
